@@ -30,24 +30,25 @@ import (
 	cliHandler "github.com/apex/log/handlers/cli"
 	textHandler "github.com/apex/log/handlers/logfmt"
 	multiHandler "github.com/apex/log/handlers/multi"
+	"github.com/bullettime/lora-mqtt/database"
+	"github.com/bullettime/lora-mqtt/database/influxdb"
+	"github.com/bullettime/lora-mqtt/input"
+	"github.com/bullettime/lora-mqtt/parser"
+	"github.com/bullettime/lora-mqtt/parser/ttnjson"
+	"github.com/bullettime/lora-mqtt/util"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/bullettime/lora-mqtt/database/influxdb"
-	"github.com/bullettime/lora-mqtt/input"
-	"github.com/bullettime/lora-mqtt/util"
 	"os/signal"
 	"syscall"
-	"github.com/bullettime/lora-mqtt/parser/ttnjson"
-	"github.com/bullettime/lora-mqtt/parser"
-	"github.com/bullettime/lora-mqtt/database"
 )
 
 var (
-	cfgFile string
-	logFile *os.File
-	verbose bool
-	debug   bool
+	cfgFile    string
+	logFile    *os.File
+	verbose    bool
+	debug      bool
+	metricName string
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -121,7 +122,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	//RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.Flags().StringVarP(&metricName, "metric-name", "m", ttnjson.LocationData, "define custom metric name")
 
 	viper.SetDefault("influxdb.precision", "ms")
 	viper.SetDefault("mqtt.clientid", fmt.Sprintf("lora-mqtt-%s", util.RandomString(4)))
@@ -165,22 +166,27 @@ func checkConfig() {
 }
 
 func start() {
-	p, err := ttnjson.New(ttnjson.LocationData)
+	if len(metricName) == 0 {
+		log.Fatal("you need to specify a valid metric name")
+	}
+	log.WithField("name", metricName).Debug("metric")
+
+	p, err := ttnjson.New(metricName)
 	if err != nil {
 		log.WithError(err).Fatal("can't create ttnjson parser")
 	}
 
 	influxOptions := influxdb.InfluxOptions{
-		Server: viper.GetString("influxdb.server.url"),
-		Username: viper.GetString("influxdb.server.username"),
-		Password: viper.GetString("influxdb.server.password"),
-		Database: viper.GetString("influxdb.database"),
+		Server:    viper.GetString("influxdb.server.url"),
+		Username:  viper.GetString("influxdb.server.username"),
+		Password:  viper.GetString("influxdb.server.password"),
+		Database:  viper.GetString("influxdb.database"),
 		Precision: viper.GetString("influxdb.precision"),
 	}
 	log.WithFields(log.Fields{
-		"Server": influxOptions.Server,
-		"Username": influxOptions.Username,
-		"Database": influxOptions.Database,
+		"Server":    influxOptions.Server,
+		"Username":  influxOptions.Username,
+		"Database":  influxOptions.Database,
 		"Precision": influxOptions.Precision,
 	}).Debug("MQTT Options")
 	db := influxdb.New(influxOptions)
@@ -191,21 +197,21 @@ func start() {
 	}
 	defer db.Close()
 	log.WithFields(log.Fields{
-		"server": influxOptions.Server,
+		"server":   influxOptions.Server,
 		"database": influxOptions.Database,
 	}).Info("connected to influxdb")
 
 	mqttOptions := input.MQTTOptions{
-		Server: viper.GetString("mqtt.server.url"),
+		Server:   viper.GetString("mqtt.server.url"),
 		Username: viper.GetString("mqtt.server.username"),
 		Password: viper.GetString("mqtt.server.password"),
-		QoS: viper.GetInt("mqtt.qos"),
+		QoS:      viper.GetInt("mqtt.qos"),
 		ClientID: viper.GetString("mqtt.clientid"),
 	}
 	log.WithFields(log.Fields{
-		"Server": mqttOptions.Server,
+		"Server":   mqttOptions.Server,
 		"Username": mqttOptions.Username,
-		"QoS": mqttOptions.QoS,
+		"QoS":      mqttOptions.QoS,
 		"ClientID": mqttOptions.ClientID,
 	}).Debug("MQTT Options")
 	mqtt := input.New(mqttOptions)
@@ -236,7 +242,7 @@ func receiver(m *input.MQTT, p parser.Parser, db database.Database) {
 			return
 		case msg := <-m.Incoming:
 			log.WithFields(log.Fields{
-				"topic": msg.Topic(),
+				"topic":   msg.Topic(),
 				"payload": string(msg.Payload()),
 			}).Debug("received message")
 			metrics, err := p.Parse(msg.Payload())
