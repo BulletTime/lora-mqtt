@@ -33,6 +33,14 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/bullettime/lora-mqtt/database/influxdb"
+	"github.com/bullettime/lora-mqtt/input"
+	"github.com/bullettime/lora-mqtt/util"
+	"os/signal"
+	"syscall"
+	"github.com/bullettime/lora-mqtt/parser/ttnjson"
+	"github.com/bullettime/lora-mqtt/parser"
+	"github.com/bullettime/lora-mqtt/database"
 )
 
 var (
@@ -81,7 +89,10 @@ to quickly create a Cobra application.`,
 	},
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		checkConfig()
+		start()
+	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		if logFile != nil {
 			logFile.Close()
@@ -105,10 +116,15 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.lora-mqtt.yaml)")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "print everything to standard output")
+	RootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "enable debug logs")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	//RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	viper.SetDefault("influxdb.precision", "ms")
+	viper.SetDefault("mqtt.clientid", fmt.Sprintf("lora-mqtt-%s", util.RandomString(4)))
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -140,4 +156,106 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func checkConfig() {
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatal("no config file found (run 'configure' first)")
+	}
+}
+
+func start() {
+	p, err := ttnjson.New(ttnjson.LocationData)
+	if err != nil {
+		log.WithError(err).Fatal("can't create ttnjson parser")
+	}
+
+	influxOptions := influxdb.InfluxOptions{
+		Server: viper.GetString("influxdb.server.url"),
+		Username: viper.GetString("influxdb.server.username"),
+		Password: viper.GetString("influxdb.server.password"),
+		Database: viper.GetString("influxdb.database"),
+		Precision: viper.GetString("influxdb.precision"),
+	}
+	log.WithFields(log.Fields{
+		"Server": influxOptions.Server,
+		"Username": influxOptions.Username,
+		"Database": influxOptions.Database,
+		"Precision": influxOptions.Precision,
+	}).Debug("MQTT Options")
+	db := influxdb.New(influxOptions)
+
+	err = db.Connect()
+	if err != nil {
+		log.WithError(err).Fatal("can't connect to influxdb")
+	}
+	defer db.Close()
+	log.WithFields(log.Fields{
+		"server": influxOptions.Server,
+		"database": influxOptions.Database,
+	}).Info("connected to influxdb")
+
+	mqttOptions := input.MQTTOptions{
+		Server: viper.GetString("mqtt.server.url"),
+		Username: viper.GetString("mqtt.server.username"),
+		Password: viper.GetString("mqtt.server.password"),
+		QoS: viper.GetInt("mqtt.qos"),
+		ClientID: viper.GetString("mqtt.clientid"),
+	}
+	log.WithFields(log.Fields{
+		"Server": mqttOptions.Server,
+		"Username": mqttOptions.Username,
+		"QoS": mqttOptions.QoS,
+		"ClientID": mqttOptions.ClientID,
+	}).Debug("MQTT Options")
+	mqtt := input.New(mqttOptions)
+
+	err = mqtt.Connect()
+	if err != nil {
+		log.WithError(err).Fatal("can't connect to mqtt")
+	}
+	defer mqtt.Close()
+	log.WithField("server", mqttOptions.Server).Info("connected to mqtt")
+
+	err = mqtt.Subscribe(viper.GetString("mqtt.topic"))
+	if err != nil {
+		log.WithError(err).Fatalf("can't subscribe to topic: %s", viper.GetString("mqtt.topic"))
+	}
+	log.WithField("topic", viper.GetString("mqtt.topic")).Info("mqtt subscribed to topic")
+
+	go receiver(mqtt, p, db)
+
+	waitForSignal()
+}
+
+func receiver(m *input.MQTT, p parser.Parser, db database.Database) {
+	for {
+		select {
+		case <-m.Done:
+			log.Debug("shutting down receiver")
+			return
+		case msg := <-m.Incoming:
+			log.WithFields(log.Fields{
+				"topic": msg.Topic(),
+				"payload": string(msg.Payload()),
+			}).Debug("received message")
+			metrics, err := p.Parse(msg.Payload())
+			if err != nil {
+				log.WithError(err).Warnf("could not parse payload: %s", string(msg.Payload()))
+				continue
+			}
+
+			err = db.Write(metrics)
+			if err != nil {
+				log.WithError(err).Error("could not write metrics to database")
+			}
+		}
+	}
+}
+
+func waitForSignal() {
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	s := <-ch
+	log.WithField("signal", s).Warn("exiting")
 }
