@@ -70,7 +70,7 @@ type metadata struct {
 
 type gateway struct {
 	GatewayID string    `json:"gateway_id"`
-	Timestamp int       `json:"timestamp"`
+	Timestamp uint64    `json:"timestamp"`
 	Time      time.Time `json:"time"`
 	Channel   int       `json:"channel"`
 	RSSI      int       `json:"rssi"`
