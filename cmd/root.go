@@ -188,7 +188,7 @@ func start() {
 		"Username":  influxOptions.Username,
 		"Database":  influxOptions.Database,
 		"Precision": influxOptions.Precision,
-	}).Debug("MQTT Options")
+	}).Debug("InfluxDB Options")
 	db := influxdb.New(influxOptions)
 
 	err = db.Connect()
