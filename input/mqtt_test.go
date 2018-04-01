@@ -23,16 +23,17 @@
 package input
 
 import (
-	"testing"
 	"fmt"
+	"testing"
+
 	"github.com/bullettime/lora-mqtt/util"
 )
 
 var options = MQTTOptions{
-	Server: "tcp://localhost:1883",
+	Server:   "tcp://localhost:1883",
 	Username: "",
 	Password: "",
-	QoS: 0,
+	QoS:      0,
 	ClientID: fmt.Sprintf("lora-mqtt-%s", util.RandomString(4)),
 }
 

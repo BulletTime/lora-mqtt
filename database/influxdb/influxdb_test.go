@@ -25,13 +25,14 @@ package influxdb
 import (
 	"testing"
 	"time"
+
 	"github.com/bullettime/lora-mqtt/model"
 )
 
 var server = "http://localhost:8086"
 
 var options = InfluxOptions{
-	Server: server,
+	Server:   server,
 	Username: "demo",
 	Password: "demo",
 	Database: "demo",

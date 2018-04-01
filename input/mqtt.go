@@ -23,9 +23,10 @@
 package input
 
 import (
+	"sync"
+
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
-	"sync"
 )
 
 type MQTT struct {

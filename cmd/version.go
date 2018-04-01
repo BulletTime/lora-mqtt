@@ -31,7 +31,7 @@ import (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get build and version information",
-	Long: `lora-mqtt version gets the build and version information of lora-mqtt`,
+	Long:  `lora-mqtt version gets the build and version information of lora-mqtt`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf(
 			"Version: %s\nBuild: %s\nBuild Date: %s\n",

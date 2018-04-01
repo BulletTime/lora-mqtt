@@ -26,6 +26,9 @@ import (
 	"path"
 	"path/filepath"
 
+	"os/signal"
+	"syscall"
+
 	"github.com/apex/log"
 	cliHandler "github.com/apex/log/handlers/cli"
 	textHandler "github.com/apex/log/handlers/logfmt"
@@ -39,8 +42,6 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os/signal"
-	"syscall"
 )
 
 var (

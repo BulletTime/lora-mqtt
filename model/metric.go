@@ -24,14 +24,15 @@ package model
 
 import (
 	"time"
+
 	"github.com/pkg/errors"
 )
 
 type metric struct {
-	name string
-	tags map[string]string
+	name   string
+	tags   map[string]string
 	fields map[string]interface{}
-	time time.Time
+	time   time.Time
 }
 
 type Metric interface {
@@ -62,10 +63,10 @@ func NewMetric(name string, tags map[string]string, fields map[string]interface{
 	}
 
 	m := &metric{
-		name: name,
-		tags: tags,
+		name:   name,
+		tags:   tags,
 		fields: fields,
-		time: time,
+		time:   time,
 	}
 
 	return m, nil

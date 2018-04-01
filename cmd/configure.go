@@ -22,13 +22,14 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
+	"os"
+
 	"github.com/apex/log"
 	"github.com/segmentio/go-prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
-	"net/url"
-	"os"
 )
 
 type yamlConfig struct {

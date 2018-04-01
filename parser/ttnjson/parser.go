@@ -25,11 +25,12 @@ package ttnjson
 import (
 	"encoding/base64"
 	"encoding/json"
+	"strconv"
+	"time"
+
 	"github.com/bullettime/lora-mqtt/model"
 	"github.com/bullettime/lora-mqtt/parser"
 	"github.com/pkg/errors"
-	"strconv"
-	"time"
 )
 
 const LocationData = "coverage"
@@ -69,7 +70,7 @@ type metadata struct {
 }
 
 type gateway struct {
-	GatewayID string    `json:"gateway_id"`
+	GatewayID string    `json:"gtw_id"`
 	Timestamp uint64    `json:"timestamp"`
 	Time      time.Time `json:"time"`
 	Channel   int       `json:"channel"`

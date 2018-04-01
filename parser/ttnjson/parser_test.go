@@ -272,7 +272,7 @@ func TestTtnParser_SetDefaultTags(t *testing.T) {
 		t.Error(err)
 	}
 
-	tags := map[string]string {
+	tags := map[string]string{
 		"test": "a",
 	}
 
