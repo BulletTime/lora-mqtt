@@ -146,7 +146,7 @@ func setupMQTT() mqttConfig {
 	config.ClientID = prompt.String("[%s] Client ID", name)
 	config.Topic = prompt.StringRequired("[%s] Topic (eg. `+/devices/+/up`)", name)
 
-	config.Debug = prompt.Confirm("[%s] Debug", name)
+	config.Debug = prompt.Confirm("[%s] Debug (Y/N)", name)
 
 	return config
 }
