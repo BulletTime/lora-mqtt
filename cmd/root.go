@@ -208,12 +208,14 @@ func start() {
 		Password: viper.GetString("mqtt.server.password"),
 		QoS:      viper.GetInt("mqtt.qos"),
 		ClientID: viper.GetString("mqtt.clientid"),
+		Debug:    viper.GetBool("mqtt.debug"),
 	}
 	log.WithFields(log.Fields{
 		"Server":   mqttOptions.Server,
 		"Username": mqttOptions.Username,
 		"QoS":      mqttOptions.QoS,
 		"ClientID": mqttOptions.ClientID,
+		"Debug":    mqttOptions.Debug,
 	}).Debug("MQTT Options")
 	mqtt := input.New(mqttOptions)
 

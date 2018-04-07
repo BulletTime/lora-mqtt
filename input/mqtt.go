@@ -23,8 +23,10 @@
 package input
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/apex/log"
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 )
@@ -46,9 +48,16 @@ type MQTTOptions struct {
 	Password string
 	QoS      int
 	ClientID string
+	Debug    bool
 }
 
+type debugLogger struct{}
+
 func New(options MQTTOptions) *MQTT {
+	if options.Debug {
+		paho.DEBUG = debugLogger{}
+	}
+
 	return &MQTT{
 		options: options,
 	}
@@ -76,6 +85,8 @@ func (m *MQTT) Connect() error {
 
 	m.Incoming = make(chan paho.Message)
 	m.Done = make(chan struct{})
+
+	log.Debug("[MQTT] Connected")
 
 	return nil
 }
@@ -130,5 +141,14 @@ func (m *MQTT) Close() {
 	if m.client != nil && m.client.IsConnected() {
 		close(m.Done)
 		m.client.Disconnect(250)
+		log.Debug("[MQTT] Disconnected")
 	}
+}
+
+func (l debugLogger) Println(v ...interface{}) {
+	log.Debugf("[MQTT Debug] %s", fmt.Sprintln(v...))
+}
+
+func (l debugLogger) Printf(format string, v ...interface{}) {
+	log.Debugf("[MQTT Debug] %s", fmt.Sprintf(format, v...))
 }

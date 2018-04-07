@@ -54,6 +54,7 @@ type mqttConfig struct {
 	QoS      int          `yaml:"qos"`
 	ClientID string       `yaml:"clientid"`
 	Topic    string       `yaml:"topic"`
+	Debug    bool         `yaml:"debug"`
 }
 
 // configureCmd represents the configure command
@@ -144,6 +145,8 @@ func setupMQTT() mqttConfig {
 	config.QoS = prompt.Choose("[MQTT] Quality of Service (default `0`)", []string{"0", "1", "2"})
 	config.ClientID = prompt.String("[%s] Client ID", name)
 	config.Topic = prompt.StringRequired("[%s] Topic (eg. `+/devices/+/up`)", name)
+
+	config.Debug = prompt.Confirm("[%s] Debug", name)
 
 	return config
 }
