@@ -36,6 +36,8 @@ type MQTT struct {
 	client   paho.Client
 	cOptions *paho.ClientOptions
 
+	subscriptions map[string]bool
+
 	Incoming chan paho.Message
 	Done     chan struct{}
 
@@ -59,7 +61,7 @@ func New(options MQTTOptions) *MQTT {
 	}
 
 	return &MQTT{
-		options: options,
+		options:       options,
 	}
 }
 
@@ -83,10 +85,29 @@ func (m *MQTT) Connect() error {
 		return errors.Wrap(token.Error(), "[MQTT] error connecting")
 	}
 
+	m.subscriptions = make(map[string]bool)
 	m.Incoming = make(chan paho.Message)
 	m.Done = make(chan struct{})
 
-	log.Debug("[MQTT] Connected")
+	var reconnecting bool
+
+	m.cOptions.SetConnectionLostHandler(func(client paho.Client, err error) {
+		log.Warnf("[MQTT] disconnected (%s), reconnecting...", err)
+		reconnecting = true
+	})
+
+	m.cOptions.SetOnConnectHandler(func(client paho.Client) {
+		log.Info("[MQTT] connected")
+		if reconnecting {
+			for topic, on := range m.subscriptions {
+				if on {
+					log.Debugf("[MQTT] re-subscribing to topic: %s", topic)
+					m.Subscribe(topic)
+				}
+			}
+			reconnecting = false
+		}
+	})
 
 	return nil
 }
@@ -112,6 +133,10 @@ func (m *MQTT) Subscribe(topic string) error {
 			return errors.Wrapf(token.Error(), "[MQTT] error subscribing to %s", topic)
 		}
 
+		m.subscriptions[topic] = true
+
+		log.Infof("[MQTT] subscribing to topic: %s", topic)
+
 		return nil
 	} else {
 		return errors.New("[MQTT] trying to subscribe while not connected")
@@ -128,6 +153,12 @@ func (m *MQTT) Unsubscribe(topics ...string) error {
 			return errors.Wrapf(token.Error(), "[MQTT] error unsubscribing from: %s", topics)
 		}
 
+		for _, topic := range topics {
+			m.subscriptions[topic] = false
+
+			log.Infof("[MQTT] un-subscribing from topic: %s", topic)
+		}
+
 		return nil
 	} else {
 		return errors.New("[MQTT] trying to unsubscribe while not connected")
@@ -141,7 +172,7 @@ func (m *MQTT) Close() {
 	if m.client != nil && m.client.IsConnected() {
 		close(m.Done)
 		m.client.Disconnect(250)
-		log.Debug("[MQTT] Disconnected")
+		log.Info("[MQTT] disconnected")
 	}
 }
 
