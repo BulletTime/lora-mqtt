@@ -80,15 +80,6 @@ func (m *MQTT) Connect() error {
 		return errors.Wrap(err, "[MQTT] error creating options")
 	}
 
-	m.client = paho.NewClient(m.cOptions)
-	if token := m.client.Connect(); token.Wait() && token.Error() != nil {
-		return errors.Wrap(token.Error(), "[MQTT] error connecting")
-	}
-
-	m.subscriptions = make(map[string]bool)
-	m.Incoming = make(chan paho.Message)
-	m.Done = make(chan struct{})
-
 	var reconnecting bool
 
 	m.cOptions.SetConnectionLostHandler(func(client paho.Client, err error) {
@@ -108,6 +99,15 @@ func (m *MQTT) Connect() error {
 			reconnecting = false
 		}
 	})
+
+	m.client = paho.NewClient(m.cOptions)
+	if token := m.client.Connect(); token.Wait() && token.Error() != nil {
+		return errors.Wrap(token.Error(), "[MQTT] error connecting")
+	}
+
+	m.subscriptions = make(map[string]bool)
+	m.Incoming = make(chan paho.Message)
+	m.Done = make(chan struct{})
 
 	return nil
 }

@@ -224,13 +224,11 @@ func start() {
 		log.WithError(err).Fatal("can't connect to mqtt")
 	}
 	defer mqtt.Close()
-	log.WithField("server", mqttOptions.Server).Info("connected to mqtt")
 
 	err = mqtt.Subscribe(viper.GetString("mqtt.topic"))
 	if err != nil {
 		log.WithError(err).Fatalf("can't subscribe to topic: %s", viper.GetString("mqtt.topic"))
 	}
-	log.WithField("topic", viper.GetString("mqtt.topic")).Info("mqtt subscribed to topic")
 
 	go receiver(mqtt, p, db)
 
