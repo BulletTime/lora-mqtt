@@ -30,11 +30,17 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
+	"github.com/bullettime/lora-mqtt/parser/factory"
 )
 
 type yamlConfig struct {
+	Parser   parserConfig   `yaml:"parser"`
 	InfluxDB influxdbConfig `yaml:"influxdb"`
 	MQTT     mqttConfig     `yaml:"mqtt"`
+}
+
+type parserConfig struct {
+	Type int `yaml:"type"`
 }
 
 type serverConfig struct {
@@ -67,10 +73,12 @@ Various different values for settings that are needed to use this tool are asked
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("configure called")
 
+		parser := setupParser()
 		influx := setupInflux()
 		mqtt := setupMQTT()
 
 		newConfig := &yamlConfig{
+			Parser:   parser,
 			InfluxDB: influx,
 			MQTT:     mqtt,
 		}
@@ -116,6 +124,17 @@ func printHeader(text string) {
 
 func printFooter() {
 	fmt.Printf("\n")
+}
+
+func setupParser() parserConfig {
+	var config parserConfig
+
+	printHeader("Configure Parser")
+	defer printFooter()
+
+	config.Type = prompt.Choose("[Parser] type", factory.GetTypesList())
+
+	return config
 }
 
 func setupInflux() influxdbConfig {

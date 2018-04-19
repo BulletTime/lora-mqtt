@@ -23,10 +23,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
-
-	"os/signal"
 	"syscall"
 
 	"github.com/apex/log"
@@ -37,11 +36,11 @@ import (
 	"github.com/bullettime/lora-mqtt/database/influxdb"
 	"github.com/bullettime/lora-mqtt/input"
 	"github.com/bullettime/lora-mqtt/parser"
-	"github.com/bullettime/lora-mqtt/parser/ttnjson"
 	"github.com/bullettime/lora-mqtt/util"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/bullettime/lora-mqtt/parser/factory"
 )
 
 var (
@@ -123,7 +122,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	RootCmd.Flags().StringVarP(&metricName, "metric-name", "m", ttnjson.LocationData, "define custom metric name")
+	RootCmd.Flags().StringVarP(&metricName, "metric-name", "m", parser.LocationData, "define custom metric name")
 
 	viper.SetDefault("influxdb.precision", "ms")
 	viper.SetDefault("mqtt.clientid", fmt.Sprintf("lora-mqtt-%s", util.RandomString(4)))
@@ -172,9 +171,9 @@ func start() {
 	}
 	log.WithField("name", metricName).Debug("metric")
 
-	p, err := ttnjson.New(metricName)
+	p, err := factory.CreateParser(factory.TypeParser(viper.GetInt("parser.type")), metricName)
 	if err != nil {
-		log.WithError(err).Fatal("can't create ttnjson parser")
+		log.WithError(err).Fatal("can't create parser")
 	}
 
 	influxOptions := influxdb.InfluxOptions{

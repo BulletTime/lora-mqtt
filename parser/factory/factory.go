@@ -1,3 +1,4 @@
+//go:generate stringer -type=TypeParser
 // The MIT License (MIT)
 //
 // Copyright © 2018 Sven Agneessens <sven.agneessens@gmail.com>
@@ -20,17 +21,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package parser
+package factory
 
 import (
-	"github.com/bullettime/lora-mqtt/model"
+	"github.com/bullettime/lora-mqtt/parser"
+	"github.com/bullettime/lora-mqtt/parser/ttnjson"
+	"github.com/pkg/errors"
 )
 
-const LocationData = "coverage"
+type TypeParser int
 
-type Parser interface {
-	Parse(buf []byte) ([]model.Metric, error)
-	//ParseLine(line string) (model.Metric, error)
-	SetDefaultTags(tags map[string]string)
+const (
+	ttn TypeParser = iota
+	dingnet
+)
+
+func GetTypesList() []string {
+	var typesList []string
+	for i := 0; i < len(_TypeParser_index) - 1; i++ {
+		typesList = append(typesList, TypeParser(i).String())
+	}
+	return typesList
 }
 
+func CreateParser(typeParser TypeParser, metricName string) (parser.Parser, error) {
+	switch typeParser {
+	case ttn:
+		return ttnjson.New(metricName)
+	case dingnet:
+		return nil, nil
+	default:
+		return nil, errors.New("[Parser Factory] incorrect parser type")
+	}
+}

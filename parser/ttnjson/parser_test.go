@@ -23,10 +23,8 @@
 package ttnjson
 
 import (
-	"bytes"
-	"encoding/base64"
-	"strconv"
 	"testing"
+	"github.com/bullettime/lora-mqtt/parser"
 )
 
 const (
@@ -101,105 +99,8 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestPayload_MarshalJSON(t *testing.T) {
-	p := payload{
-		size:  4,
-		bytes: []byte{0x0, 0x1, 0x2, 0x3},
-	}
-
-	out, err := p.MarshalJSON()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if out[0] != '"' || out[len(out)-1] != '"' {
-		t.Fatal("payload should be quoted")
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(string(out[1 : len(out)-1]))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(decoded) != p.size {
-		t.Error("incorrect size after marshalling")
-	}
-
-	if bytes.Compare(p.bytes, decoded) != 0 {
-		t.Error("bytes not matching before and after marshalling")
-	}
-}
-
-func TestPayload_MarshalJSON2(t *testing.T) {
-	p := payload{}
-
-	out, err := p.MarshalJSON()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if out[0] != '"' || out[len(out)-1] != '"' {
-		t.Fatal("payload should be quoted")
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(string(out[1 : len(out)-1]))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(decoded) != p.size {
-		t.Error("incorrect size after marshalling")
-	}
-
-	if bytes.Compare(p.bytes, decoded) != 0 {
-		t.Error("bytes before and after marshalling not matching")
-	}
-}
-
-func TestPayload_UnmarshalJSON(t *testing.T) {
-	p := payload{}
-	testBytes := []byte{0x0, 0x1, 0x2, 0x3}
-
-	encoded := base64.StdEncoding.EncodeToString(testBytes)
-	encoded = strconv.Quote(encoded)
-
-	err := p.UnmarshalJSON([]byte(encoded))
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(testBytes) != p.size {
-		t.Error("incorrect size after unmarshalling")
-	}
-
-	if bytes.Compare(testBytes, p.bytes) != 0 {
-		t.Error("bytes before and after marshalling not matching")
-	}
-}
-
-func TestPayload_UnmarshalJSON2(t *testing.T) {
-	p := payload{}
-	testBytes := make([]byte, 0)
-
-	encoded := base64.StdEncoding.EncodeToString(testBytes)
-	encoded = strconv.Quote(encoded)
-
-	err := p.UnmarshalJSON([]byte(encoded))
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(testBytes) != p.size {
-		t.Error("incorrect size after unmarshalling")
-	}
-
-	if bytes.Compare(testBytes, p.bytes) != 0 {
-		t.Error("bytes before and after marshalling not matching")
-	}
-}
-
 func TestTtnParser_Parse(t *testing.T) {
-	p, err := New(LocationData)
+	p, err := New(parser.LocationData)
 	if err != nil {
 		t.Error(err)
 	}

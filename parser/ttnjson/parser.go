@@ -23,7 +23,6 @@
 package ttnjson
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"strconv"
 	"time"
@@ -32,10 +31,6 @@ import (
 	"github.com/bullettime/lora-mqtt/parser"
 	"github.com/pkg/errors"
 )
-
-const LocationData = "coverage"
-
-var InvalidPayloadError = errors.New("invalid payload")
 
 type ttnParser struct {
 	MetricName  string
@@ -50,7 +45,7 @@ type ttnJson struct {
 	Counter        int                    `json:"counter"`
 	IsRetry        bool                   `json:"is_retry,omitempty"`
 	Confirmed      bool                   `json:"confirmed,omitempty"`
-	PayloadRaw     payload                `json:"payload_raw"`
+	PayloadRaw     parser.Payload         `json:"payload_raw"`
 	PayloadFields  map[string]interface{} `json:"payload_fields,omitempty"`
 	Metadata       metadata               `json:"metadata"`
 }
@@ -80,66 +75,6 @@ type gateway struct {
 	Latitude  float64   `json:"latitude,omitempty"`
 	Longitude float64   `json:"longitude,omitempty"`
 	Altitude  float64   `json:"altitude,omitempty"`
-}
-
-type payload struct {
-	size  int
-	bytes []byte
-}
-
-func (p payload) MarshalJSON() ([]byte, error) {
-	buf := make([]byte, base64.StdEncoding.EncodedLen(p.size))
-	base64.StdEncoding.Encode(buf, p.bytes)
-	bufStr := strconv.Quote(string(buf))
-	return []byte(bufStr), nil
-}
-
-func (p *payload) UnmarshalJSON(data []byte) error {
-	dataStr, err := strconv.Unquote(string(data))
-	if err != nil {
-		return errors.Wrap(err, "[TTNParser] error unquoting raw payload (base64)")
-	}
-	dataBytes := []byte(dataStr)
-	buf := make([]byte, base64.StdEncoding.DecodedLen(len(dataBytes)))
-	p.size, err = base64.StdEncoding.Decode(buf, dataBytes)
-	if err != nil {
-		return errors.Wrap(err, "[TTNParser] error unmarshalling raw payload (base64)")
-	}
-	bufBytes := make([]byte, p.size)
-	copy(bufBytes, buf[:p.size])
-	p.bytes = bufBytes
-	return nil
-}
-
-func (p payload) getLocation() (float64, float64, error) {
-	if !p.isValidPayload() {
-		return 0, 0, InvalidPayloadError
-	}
-
-	multiplier := float64(10000)
-
-	latitude := float64(uint32(p.bytes[2])|uint32(p.bytes[1])<<8|uint32(p.bytes[0])<<16) / multiplier
-	longitude := float64(uint32(p.bytes[5])|uint32(p.bytes[4])<<8|uint32(p.bytes[3])<<16) / multiplier
-
-	return latitude, longitude, nil
-}
-
-func (p payload) getPower() (int8, error) {
-	if !p.isValidPayload() || len(p.bytes) < 7 {
-		return 127, InvalidPayloadError
-	}
-
-	power := int8(p.bytes[6])
-
-	return power, nil
-}
-
-func (p payload) isValidPayload() bool {
-	if len(p.bytes) < 6 || len(p.bytes) > 7 {
-		return false
-	} else {
-		return true
-	}
 }
 
 func New(name string) (parser.Parser, error) {
@@ -175,12 +110,12 @@ func (p *ttnParser) Parse(buf []byte) ([]model.Metric, error) {
 	tags["device_id"] = message.DevID
 	tags["frequency"] = strconv.FormatFloat(message.Metadata.Frequency, 'f', -1, 64)
 	tags["data_rate"] = message.Metadata.DataRate
-	if p.MetricName == LocationData {
-		power, err := message.PayloadRaw.getPower()
+	if p.MetricName == parser.LocationData {
+		power, err := message.PayloadRaw.GetPower()
 		if err == nil {
 			tags["power"] = strconv.Itoa(int(power))
 		}
-		lat, lon, err := message.PayloadRaw.getLocation()
+		lat, lon, err := message.PayloadRaw.GetLocation()
 		if err == nil {
 			tags["latitude"] = strconv.FormatFloat(lat, 'f', -1, 64)
 			tags["longitude"] = strconv.FormatFloat(lon, 'f', -1, 64)
@@ -188,7 +123,7 @@ func (p *ttnParser) Parse(buf []byte) ([]model.Metric, error) {
 	}
 
 	fields := map[string]interface{}{
-		"size": message.PayloadRaw.size,
+		"size": message.PayloadRaw.Size,
 	}
 
 	for _, g := range message.Metadata.Gateways {
@@ -197,7 +132,7 @@ func (p *ttnParser) Parse(buf []byte) ([]model.Metric, error) {
 			return nil, errors.Wrap(err, "[TTNParser] error creating metric")
 		}
 
-		if p.MetricName == LocationData {
+		if p.MetricName == parser.LocationData {
 			metric.AddField("rssi", g.RSSI)
 			metric.AddField("snr", g.SNR)
 		} else {
