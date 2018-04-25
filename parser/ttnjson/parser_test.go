@@ -23,8 +23,8 @@
 package ttnjson
 
 import (
-	"testing"
 	"github.com/bullettime/lora-mqtt/parser"
+	"testing"
 )
 
 const (

@@ -36,11 +36,11 @@ import (
 	"github.com/bullettime/lora-mqtt/database/influxdb"
 	"github.com/bullettime/lora-mqtt/input"
 	"github.com/bullettime/lora-mqtt/parser"
+	"github.com/bullettime/lora-mqtt/parser/factory"
 	"github.com/bullettime/lora-mqtt/util"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/bullettime/lora-mqtt/parser/factory"
 )
 
 var (
@@ -245,6 +245,12 @@ func receiver(m *input.MQTT, p parser.Parser, db database.Database) {
 				"topic":   msg.Topic(),
 				"payload": string(msg.Payload()),
 			}).Debug("received message")
+
+			switch factory.TypeParser(viper.GetInt("parser.type")) {
+			case factory.DingNet:
+				p.SetDefaultTags(map[string]string{"device_id": "sodaq_one"})
+			}
+
 			metrics, err := p.Parse(msg.Payload())
 			if err != nil {
 				log.WithError(err).Warnf("could not parse payload: %s", string(msg.Payload()))

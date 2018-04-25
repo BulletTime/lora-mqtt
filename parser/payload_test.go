@@ -23,10 +23,10 @@
 package parser
 
 import (
-	"testing"
-	"encoding/base64"
 	"bytes"
+	"encoding/base64"
 	"strconv"
+	"testing"
 )
 
 func TestPayload_MarshalJSON(t *testing.T) {

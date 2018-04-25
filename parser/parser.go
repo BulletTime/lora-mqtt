@@ -33,4 +33,3 @@ type Parser interface {
 	//ParseLine(line string) (model.Metric, error)
 	SetDefaultTags(tags map[string]string)
 }
-

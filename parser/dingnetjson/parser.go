@@ -20,14 +20,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package dingnet
+package dingnetjson
 
 import (
 	"encoding/json"
+	"strconv"
+	"time"
+
 	"github.com/bullettime/lora-mqtt/model"
 	"github.com/bullettime/lora-mqtt/parser"
 	"github.com/pkg/errors"
-	"strconv"
 )
 
 type dingnetParser struct {
@@ -36,12 +38,40 @@ type dingnetParser struct {
 }
 
 type dingnetJson struct {
+	//AppEUI string `json:"app_eui"`
+	//DevEUI string `json:"dev_eui"`
+	//DevAddress string `json:"dev_addr"`
+	Port       int            `json:"port"`
+	Counter    int            `json:"counter"`
 	PayloadRaw parser.Payload `json:"payload_raw"`
+	Metadata   metadata       `json:"metadata"`
+}
+
+type metadata struct {
+	Time       time.Time `json:"time"`
+	Frequency  float64   `json:"frequency"`
+	Modulation string    `json:"modulation"`
+	DataRate   string    `json:"data_rate"`
+	CodingRate string    `json:"coding_rate"`
+	Gateways   []gateway `json:"gateways"`
+}
+
+type gateway struct {
+	GatewayID string    `json:"gtw_id"`
+	Timestamp uint64    `json:"timestamp"`
+	Time      time.Time `json:"time"`
+	Channel   int       `json:"channel"`
+	RSSI      int       `json:"rssi"`
+	SNR       float64   `json:"snr"`
+	RfChain   int       `json:"rf_chain"`
+	Latitude  float64   `json:"latitude,omitempty"`
+	Longitude float64   `json:"longitude,omitempty"`
+	Altitude  float64   `json:"altitude,omitempty"`
 }
 
 func New(name string) (parser.Parser, error) {
 	if len(name) == 0 {
-		return nil, errors.New("[DingnetParser] name cannot be empty")
+		return nil, errors.New("[DingNetParser] name cannot be empty")
 	}
 
 	p := dingnetParser{
@@ -57,12 +87,12 @@ func (p *dingnetParser) Parse(buf []byte) ([]model.Metric, error) {
 
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		return nil, errors.Wrapf(err, "[DingnetParser] error unmarshalling byte buffer: %s", string(buf))
+		return nil, errors.Wrapf(err, "[DingNetParser] error unmarshalling byte buffer: %s", string(buf))
 	}
 
-	//if len(message.Metadata.Gateways) == 0 {
-	//	return nil, errors.New("[TTNParser] wrong number of gateways (0)")
-	//}
+	if len(message.Metadata.Gateways) == 0 {
+		return nil, errors.New("[TTNParser] wrong number of gateways (0)")
+	}
 
 	tags := make(map[string]string, len(p.DefaultTags))
 	for k, v := range p.DefaultTags {
@@ -70,8 +100,8 @@ func (p *dingnetParser) Parse(buf []byte) ([]model.Metric, error) {
 	}
 
 	//tags["device_id"] = message.DevID
-	//tags["frequency"] = strconv.FormatFloat(message.Metadata.Frequency, 'f', -1, 64)
-	//tags["data_rate"] = message.Metadata.DataRate
+	tags["frequency"] = strconv.FormatFloat(message.Metadata.Frequency, 'f', -1, 64)
+	tags["data_rate"] = message.Metadata.DataRate
 	if p.MetricName == parser.LocationData {
 		power, err := message.PayloadRaw.GetPower()
 		if err == nil {
@@ -84,31 +114,31 @@ func (p *dingnetParser) Parse(buf []byte) ([]model.Metric, error) {
 		}
 	}
 
-	//fields := map[string]interface{}{
-	//	"size": message.PayloadRaw.Size,
-	//}
+	fields := map[string]interface{}{
+		"size": message.PayloadRaw.Size,
+	}
 
-	//for _, g := range message.Metadata.Gateways {
-	//	metric, err := model.NewMetric(p.MetricName, tags, fields, g.Time)
-	//	if err != nil {
-	//		return nil, errors.Wrap(err, "[TTNParser] error creating metric")
-	//	}
-	//
-	//	if p.MetricName == parser.LocationData {
-	//		metric.AddField("rssi", g.RSSI)
-	//		metric.AddField("snr", g.SNR)
-	//	} else {
-	//		metric.AddTag("rssi", strconv.Itoa(g.RSSI))
-	//		metric.AddTag("snr", strconv.FormatFloat(g.SNR, 'f', -1, 64))
-	//		for k, v := range message.PayloadFields {
-	//			metric.AddField(k, v)
-	//		}
-	//	}
-	//
-	//	metric.AddTag("gateway_id", g.GatewayID)
-	//
-	//	metrics = append(metrics, metric)
-	//}
+	for _, g := range message.Metadata.Gateways {
+		metric, err := model.NewMetric(p.MetricName, tags, fields, g.Time)
+		if err != nil {
+			return nil, errors.Wrap(err, "[DingNetParser] error creating metric")
+		}
+
+		if p.MetricName == parser.LocationData {
+			metric.AddField("rssi", g.RSSI)
+			metric.AddField("snr", g.SNR)
+		} else {
+			metric.AddTag("rssi", strconv.Itoa(g.RSSI))
+			metric.AddTag("snr", strconv.FormatFloat(g.SNR, 'f', -1, 64))
+			//for k, v := range message.PayloadFields {
+			//	metric.AddField(k, v)
+			//}
+		}
+
+		metric.AddTag("gateway_id", g.GatewayID)
+
+		metrics = append(metrics, metric)
+	}
 
 	return metrics, nil
 }

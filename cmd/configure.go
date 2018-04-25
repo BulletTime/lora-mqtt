@@ -26,11 +26,11 @@ import (
 	"os"
 
 	"github.com/apex/log"
+	"github.com/bullettime/lora-mqtt/parser/factory"
 	"github.com/segmentio/go-prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
-	"github.com/bullettime/lora-mqtt/parser/factory"
 )
 
 type yamlConfig struct {

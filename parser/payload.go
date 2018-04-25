@@ -24,8 +24,8 @@ package parser
 
 import (
 	"encoding/base64"
-	"strconv"
 	"github.com/pkg/errors"
+	"strconv"
 )
 
 var InvalidPayloadError = errors.New("invalid payload")

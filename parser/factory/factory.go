@@ -25,6 +25,7 @@ package factory
 
 import (
 	"github.com/bullettime/lora-mqtt/parser"
+	"github.com/bullettime/lora-mqtt/parser/dingnetjson"
 	"github.com/bullettime/lora-mqtt/parser/ttnjson"
 	"github.com/pkg/errors"
 )
@@ -32,13 +33,13 @@ import (
 type TypeParser int
 
 const (
-	ttn TypeParser = iota
-	dingnet
+	TTN TypeParser = iota
+	DingNet
 )
 
 func GetTypesList() []string {
 	var typesList []string
-	for i := 0; i < len(_TypeParser_index) - 1; i++ {
+	for i := 0; i < len(_TypeParser_index)-1; i++ {
 		typesList = append(typesList, TypeParser(i).String())
 	}
 	return typesList
@@ -46,10 +47,10 @@ func GetTypesList() []string {
 
 func CreateParser(typeParser TypeParser, metricName string) (parser.Parser, error) {
 	switch typeParser {
-	case ttn:
+	case TTN:
 		return ttnjson.New(metricName)
-	case dingnet:
-		return nil, nil
+	case DingNet:
+		return dingnetjson.New(metricName)
 	default:
 		return nil, errors.New("[Parser Factory] incorrect parser type")
 	}

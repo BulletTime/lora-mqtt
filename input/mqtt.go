@@ -61,7 +61,7 @@ func New(options MQTTOptions) *MQTT {
 	}
 
 	return &MQTT{
-		options:       options,
+		options: options,
 	}
 }
 
