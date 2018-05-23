@@ -109,8 +109,8 @@ func (p *dingnetParser) Parse(buf []byte) ([]model.Metric, error) {
 		}
 		lat, lon, err := message.PayloadRaw.GetLocation()
 		if err == nil {
-			tags["latitude"] = strconv.FormatFloat(lat, 'f', -1, 64)
-			tags["longitude"] = strconv.FormatFloat(lon, 'f', -1, 64)
+			tags["latitude"] = strconv.FormatFloat(lat, 'f', 4, 64)
+			tags["longitude"] = strconv.FormatFloat(lon, 'f', 4, 64)
 		}
 	}
 

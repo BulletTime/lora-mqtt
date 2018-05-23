@@ -1,5 +1,5 @@
 .PHONY: default all macos linux windows build clean
-VERSION := 0.2.6
+VERSION := 0.2.7
 COMMIT := $(shell git describe --always)
 GOOS ?= darwin
 GOARCH ?= amd64
