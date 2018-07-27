@@ -41,6 +41,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"regexp"
 )
 
 var (
@@ -246,9 +247,17 @@ func receiver(m *input.MQTT, p parser.Parser, db database.Database) {
 				"payload": string(msg.Payload()),
 			}).Debug("received message")
 
+			re := regexp.MustCompile(`\/devices\/(\w+)\/up`)
+			submatch := re.FindStringSubmatch(msg.Topic())
+
+			deviceID := "unkown"
+			if len(submatch) > 1 {
+				deviceID = submatch[1]
+			}
+
 			switch factory.TypeParser(viper.GetInt("parser.type")) {
 			case factory.DingNet:
-				p.SetDefaultTags(map[string]string{"device_id": "sodaq_one"})
+				p.SetDefaultTags(map[string]string{"device_id": deviceID})
 			}
 
 			metrics, err := p.Parse(msg.Payload())
