@@ -91,7 +91,7 @@ func (p *dingnetParser) Parse(buf []byte) ([]model.Metric, error) {
 	}
 
 	if len(message.Metadata.Gateways) == 0 {
-		return nil, errors.New("[TTNParser] wrong number of gateways (0)")
+		return nil, errors.New("[DingNetParser] wrong number of gateways (0)")
 	}
 
 	tags := make(map[string]string, len(p.DefaultTags))
@@ -119,7 +119,7 @@ func (p *dingnetParser) Parse(buf []byte) ([]model.Metric, error) {
 	}
 
 	for _, g := range message.Metadata.Gateways {
-		metric, err := model.NewMetric(p.MetricName, tags, fields, g.Time)
+		metric, err := model.NewMetric(p.MetricName, tags, fields, message.Metadata.Time)
 		if err != nil {
 			return nil, errors.Wrap(err, "[DingNetParser] error creating metric")
 		}
@@ -133,6 +133,27 @@ func (p *dingnetParser) Parse(buf []byte) ([]model.Metric, error) {
 			//for k, v := range message.PayloadFields {
 			//	metric.AddField(k, v)
 			//}
+
+			if p.MetricName == "adr" || p.MetricName == "ddr" {
+				dr := 0
+
+				switch message.Metadata.DataRate {
+				case "SF7BW125":
+					dr = 5
+				case "SF8BW125":
+					dr = 4
+				case "SF9BW125":
+					dr = 3
+				case "SF10BW125":
+					dr = 2
+				case "SF11BW125":
+					dr = 1
+				case "SF12BW125":
+					dr = 0
+				}
+
+				metric.AddField("dr", dr)
+			}
 		}
 
 		metric.AddTag("gateway_id", g.GatewayID)
