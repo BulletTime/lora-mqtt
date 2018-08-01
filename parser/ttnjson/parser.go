@@ -127,7 +127,7 @@ func (p *ttnParser) Parse(buf []byte) ([]model.Metric, error) {
 	}
 
 	for _, g := range message.Metadata.Gateways {
-		metric, err := model.NewMetric(p.MetricName, tags, fields, g.Time)
+		metric, err := model.NewMetric(p.MetricName, tags, fields, message.Metadata.Time)
 		if err != nil {
 			return nil, errors.Wrap(err, "[TTNParser] error creating metric")
 		}
@@ -140,6 +140,29 @@ func (p *ttnParser) Parse(buf []byte) ([]model.Metric, error) {
 			metric.AddTag("snr", strconv.FormatFloat(g.SNR, 'f', -1, 64))
 			for k, v := range message.PayloadFields {
 				metric.AddField(k, v)
+			}
+
+			if p.MetricName == "adr" || p.MetricName == "ddr" {
+				dr := 0
+
+				switch message.Metadata.DataRate {
+				case "SF7BW125":
+					dr = 5
+				case "SF8BW125":
+					dr = 4
+				case "SF9BW125":
+					dr = 3
+				case "SF10BW125":
+					dr = 2
+				case "SF11BW125":
+					dr = 1
+				case "SF12BW125":
+					dr = 0
+				}
+
+				metric.AddField("dr", dr)
+
+				metric.AddField("airtime", message.Metadata.Airtime.Seconds())
 			}
 		}
 
